@@ -63,7 +63,7 @@ contract Raffle is VRFConsumerBaseV2 {
 
     function enterRaffle() public payable {
         if (msg.value < i_entranceFee) {
-            revert Raffle__TransferFailed();
+            revert Raffle__NotEnoughEthSent();
         }
         if (s_raffleState != RaffleState.OPEN) {
             revert Raffle_RaffleNotOpen();
@@ -113,8 +113,8 @@ contract Raffle is VRFConsumerBaseV2 {
     }
 
     function fulfillRandomWords(
-        uint256 /*requestId*/,
-        uint256[] memory randomWords
+        uint256,
+        /*requestId*/ uint256[] memory randomWords
     ) internal override {
         //checks
 
@@ -137,5 +137,13 @@ contract Raffle is VRFConsumerBaseV2 {
     // getter
     function getEntranceFee() external view returns (uint256) {
         return i_entranceFee;
+    }
+
+    function getRaffleState() external view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function getPlayer(uint256 index) external view returns (address) {
+        return s_players[index];
     }
 }
