@@ -3,6 +3,7 @@ pragma solidity ^0.8.18;
 
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import {console} from "forge-std/console.sol";
 
 /**
  * @title A Sample Raffle Contract
@@ -42,6 +43,7 @@ contract Raffle is VRFConsumerBaseV2 {
 
     event EnteredRaffle(address indexed player);
     event PickedWinner(address indexed winner);
+    event RequestedWinner(uint256 indexed requestId);
 
     constructor(
         uint256 entranceFee,
@@ -95,6 +97,7 @@ contract Raffle is VRFConsumerBaseV2 {
     function performUpkeep(bytes calldata /* performData */) external {
         (bool isUpKeepNeeded, ) = checkUpkeep("");
         if (!isUpKeepNeeded) {
+            //revert Raffle_UpKeepNeeded();
             revert Raffle_UpKeepNeeded(
                 address(this).balance,
                 s_players.length,
@@ -110,6 +113,7 @@ contract Raffle is VRFConsumerBaseV2 {
             i_callbackGasLimit,
             numWords
         );
+        emit RequestedWinner(requestId);
     }
 
     function fulfillRandomWords(
@@ -145,5 +149,17 @@ contract Raffle is VRFConsumerBaseV2 {
 
     function getPlayer(uint256 index) external view returns (address) {
         return s_players[index];
+    }
+
+    function getRecentWinner() external view returns (address) {
+        return s_recentWinner;
+    }
+
+    // function getLastTimeStamp() external view returns (uint256) {
+    //     return s_lastTimeStamp;
+    // }
+
+    function getLengthOfPlayers() external view returns (uint256) {
+        return s_players.length;
     }
 }
