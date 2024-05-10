@@ -8,6 +8,9 @@ import {CreateSubscription, FundSubscription, AddConsumer} from "./Interactions.
 
 contract DeployRaffle is Script {
     function run() external returns (Raffle, HelperConfig) {
+        // vm.expectRevert(
+        //     'failed parsing $$PRIVATE_KEY as type `uint256`: missing hex prefix ("0x") for hex string'
+        // );
         HelperConfig helperConfig = new HelperConfig();
         (
             uint256 entranceFee,
@@ -16,19 +19,22 @@ contract DeployRaffle is Script {
             bytes32 gasLane,
             uint64 subscriptionId,
             uint32 callbackGasLimit,
-            address chainlink
+            address chainlink,
+            uint256 deployerKey
         ) = helperConfig.activeNetworkConfig();
 
         if (subscriptionId == 0) {
             CreateSubscription createSubscription = new CreateSubscription();
             subscriptionId = createSubscription.createSubscription(
-                vrfCoordinator
+                vrfCoordinator,
+                deployerKey
             );
             FundSubscription fundSubscription = new FundSubscription();
             fundSubscription.fundSubscription(
                 vrfCoordinator,
                 subscriptionId,
-                chainlink
+                chainlink,
+                deployerKey
             );
         }
         vm.startBroadcast();
@@ -42,7 +48,12 @@ contract DeployRaffle is Script {
         );
         vm.stopBroadcast();
         AddConsumer addConsumer = new AddConsumer();
-        addConsumer.addConsumer(vrfCoordinator,subscriptionId,address(raffle));
+        addConsumer.addConsumer(
+            vrfCoordinator,
+            subscriptionId,
+            address(raffle),
+            deployerKey
+        );
         return (raffle, helperConfig);
     }
 }

@@ -24,6 +24,8 @@ contract RaffleTest is Test {
     uint32 callbackGasLimit;
     address link;
 
+    //uint256 deployerKey;
+
     function setUp() external {
         DeployRaffle deployRaffle = new DeployRaffle();
         (raffle, helperConfig) = deployRaffle.run();
@@ -34,9 +36,17 @@ contract RaffleTest is Test {
             gasLane,
             subscriptionId,
             callbackGasLimit,
-            link
+            link,
+
         ) = helperConfig.activeNetworkConfig();
         vm.deal(PLAYER, entranceFee);
+    }
+
+    modifier skipFork() {
+        if (block.chainid != 31337) {
+            return;
+        }
+        _;
     }
 
     function testGetEntranceFee() public view {
@@ -72,6 +82,7 @@ contract RaffleTest is Test {
         vm.warp(block.timestamp + interval + 1);
         vm.roll(block.number + 1);
         raffle.performUpkeep("");
+
         vm.expectRevert(Raffle.Raffle_RaffleNotOpen.selector);
         vm.prank(PLAYER);
         vm.deal(PLAYER, 1 ether);
@@ -105,14 +116,16 @@ contract RaffleTest is Test {
     }
 
     function testPeformUpKeepWhenCheckUpkeepFailed() public {
-        vm.prank(PLAYER);
-        raffle.enterRaffle{value: entranceFee}();
+        uint256 currentBalance = 0;
+        uint256 numPlayers = 0;
+        Raffle.RaffleState rState = raffle.getRaffleState();
+        // Act / Assert
         vm.expectRevert(
             abi.encodeWithSelector(
                 Raffle.Raffle_UpKeepNeeded.selector,
-                10000000000000000,
-                1,
-                1
+                currentBalance,
+                numPlayers,
+                rState
             )
         );
         raffle.performUpkeep("");
@@ -141,7 +154,10 @@ contract RaffleTest is Test {
         assert(uint256(requestId) > 0);
     }
 
-    function testFulFillRandomWordsCanOnlyBeCalledPerformUpKeep() public {
+    function testFulFillRandomWordsCanOnlyBeCalledPerformUpKeep()
+        public
+        skipFork
+    {
         vm.prank(PLAYER);
         raffle.enterRaffle{value: entranceFee}();
 
@@ -165,7 +181,10 @@ contract RaffleTest is Test {
         );
     }
 
-    function testFulFillRandomWordsPicksWinnerResetsAndSendMoney() public {
+    function testFulFillRandomWordsPicksWinnerResetsAndSendMoney()
+        public
+        skipFork
+    {
         vm.prank(PLAYER);
         raffle.enterRaffle{value: entranceFee}();
 
@@ -182,7 +201,7 @@ contract RaffleTest is Test {
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 requestId = entries[1].topics[1];
 
-       // uint256 previousTimeStamp = block.timestamp;
+        // uint256 previousTimeStamp = block.timestamp;
         VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
             uint256(requestId),
             address(raffle)
@@ -192,6 +211,8 @@ contract RaffleTest is Test {
         assert(raffle.getRecentWinner() != address(0));
         assert(raffle.getLengthOfPlayers() == 0);
         // assert(previousTimeStamp < raffle.getLastTimeStamp());
-        assert(raffle.getRecentWinner().balance == 1 ether +  prize - entranceFee);
+        assert(
+            raffle.getRecentWinner().balance == 1 ether + prize - entranceFee
+        );
     }
 }
